@@ -1,9 +1,8 @@
-use git_version::git_version;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use ratatui::prelude::*;
 use ratatui::widgets::Paragraph;
 
-const GIT_VERSION: &str = git_version!();
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const LINE_1: &str = r#"▄█████▄ ▐██▌ ██▄ ▄██ ██   ██"#;
 const LINE_2: &str = r#"██   ██  ██   ▀███▀  ██▄ ▄██"#;
@@ -18,7 +17,7 @@ fn text<'a>() -> Text<'a> {
         Line::from(vec![
             LINE_4.fg(Color::Green),
             Span::raw("  "),
-            format!("({})", GIT_VERSION).fg(Color::Yellow),
+            format!("(v{})", VERSION).fg(Color::Yellow),
         ]),
     ])
 }
