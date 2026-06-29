@@ -53,7 +53,8 @@ impl Status {
 
     pub fn tick(&mut self) {
         let now = Instant::now();
-        self.entries.retain(|e| e.expires_at.is_none_or(|t| t > now));
+        self.entries
+            .retain(|e| e.expires_at.is_none_or(|t| t > now));
     }
 
     pub fn set(&mut self, kind: Kind, text: String, ttl: Option<Duration>) {

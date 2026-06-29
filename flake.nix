@@ -30,6 +30,10 @@
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = nixpkgs.lib.systems.flakeExposed;
 
+      flake = {
+        homeManagerModules.nixy = ./hm-module.nix;
+      };
+
       perSystem =
         {
           lib,

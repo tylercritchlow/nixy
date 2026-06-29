@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, Event, KeyEventKind};
 use ratatui::layout::Rect;
 
 use crate::components::{
@@ -8,13 +8,29 @@ use crate::components::{
     logo,
     status::{Kind as StatusKind, Status},
 };
+use crate::config::Config;
 
 const CTRL_C_WINDOW: Duration = Duration::from_millis(1_000);
 const POLL_TIMEOUT: Duration = Duration::from_millis(100);
 
 pub fn run() -> std::io::Result<()> {
+    let config = Config::load().unwrap_or_else(|e| {
+        eprintln!("warning: failed to load config: {e}; using defaults");
+        Config::default()
+    });
+    let keys = match config.keybindings.parse() {
+        Ok(k) => k,
+        Err(e) => {
+            eprintln!("warning: invalid keybinding in config: {e}; using defaults");
+            Config::default()
+                .keybindings
+                .parse()
+                .expect("defaults are valid")
+        }
+    };
+
     ratatui::run(|terminal| {
-        let mut input = Input::new();
+        let mut input = Input::new(keys.editor.clone());
         let mut status = Status::new();
 
         loop {
@@ -50,24 +66,23 @@ pub fn run() -> std::io::Result<()> {
                 continue;
             }
 
-            let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
-            match (ctrl, key.code) {
-                (true, KeyCode::Char('d')) => break,
-                (true, KeyCode::Char('c')) => {
-                    if status.has(StatusKind::QuitNag) {
-                        break;
-                    }
-                    status.set(
-                        StatusKind::QuitNag,
-                        "Press Ctrl+C again to close".to_string(),
-                        Some(CTRL_C_WINDOW),
-                    );
+            if keys.app.quit.matches(&key) {
+                break;
+            }
+            if keys.app.quit_force.matches(&key) {
+                if status.has(StatusKind::QuitNag) {
+                    break;
                 }
-                _ => {
-                    if input.handle_key(key) {
-                        status.clear(StatusKind::QuitNag);
-                    }
-                }
+                status.set(
+                    StatusKind::QuitNag,
+                    "Press Ctrl+C again to close".to_string(),
+                    Some(CTRL_C_WINDOW),
+                );
+                continue;
+            }
+
+            if input.handle_key(&key) {
+                status.clear(StatusKind::QuitNag);
             }
         }
         Ok::<(), std::io::Error>(())

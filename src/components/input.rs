@@ -3,6 +3,8 @@ use ratatui::layout::Rect;
 use ratatui::prelude::*;
 use ratatui::widgets::{Block, Paragraph};
 
+use crate::config::ParsedEditorKeybindings;
+
 const PROMPT_PREFIX: &str = "› ";
 
 pub struct Input {
@@ -11,40 +13,35 @@ pub struct Input {
     scroll: usize,
     wrap_width: usize,
     preferred_col: Option<usize>,
+    keys: ParsedEditorKeybindings,
 }
 
 impl Input {
-    pub fn new() -> Self {
+    pub fn new(keys: ParsedEditorKeybindings) -> Self {
         Self {
             value: String::new(),
             cursor: 0,
             scroll: 0,
             wrap_width: 80,
             preferred_col: None,
+            keys,
         }
     }
 
-    pub fn handle_key(&mut self, key: KeyEvent) -> bool {
-        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
-        let alt = key.modifiers.contains(KeyModifiers::ALT);
-        if ctrl && key.code == KeyCode::Char('j') {
+    pub fn handle_key(&mut self, key: &KeyEvent) -> bool {
+        if self.keys.newline.matches(key) || self.keys.newline_alt.matches(key) {
             self.insert_char('\n');
             self.preferred_col = None;
             return true;
         }
-        if alt && key.code == KeyCode::Enter {
-            self.insert_char('\n');
-            self.preferred_col = None;
-            return true;
-        }
-        if ctrl && key.code == KeyCode::Char('u') {
+        if self.keys.clear.matches(key) {
             self.value.clear();
             self.cursor = 0;
             self.scroll = 0;
             self.preferred_col = None;
             return true;
         }
-        if ctrl {
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
             return false;
         }
 
@@ -178,9 +175,8 @@ impl Input {
         frame.render_widget(Paragraph::new(lines).alignment(Alignment::Left), inner);
 
         let prefix_len = PROMPT_PREFIX.chars().count();
-        let cx = inner.x
-            + (prefix_len + cursor_col)
-                .min(inner.width.saturating_sub(1) as usize) as u16;
+        let cx =
+            inner.x + (prefix_len + cursor_col).min(inner.width.saturating_sub(1) as usize) as u16;
         let cy = inner.y + (cursor_row - self.scroll) as u16;
         frame.set_cursor_position((cx, cy));
     }
@@ -264,11 +260,5 @@ impl Input {
         }
 
         (rows, starts, cursor_row, cursor_col)
-    }
-}
-
-impl Default for Input {
-    fn default() -> Self {
-        Self::new()
     }
 }

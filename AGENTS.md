@@ -47,6 +47,7 @@ The environment is defined declaratively in `flake.nix`; always use it.
   have not fully inspected, and when asked to audit. Do not rely on search
   snippets for broad changes.
 - Follow existing style in `src/` (ratatui + crossterm, no external UI deps).
+- No comments in code unless explicitly requested.
 - Inline single-line helpers that have only one call site.
 - Avoid `unwrap`/`expect` in non-test code; prefer explicit error handling.
 - Never hardcode key checks (e.g. `matches!(key, ... "ctrl+x")`). Add defaults

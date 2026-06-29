@@ -15,7 +15,7 @@ The current terminal shell.
 - [x] Ratatui + crossterm event loop
 - [x] Logo, input, status components
 - [x] Ctrl+C quit-nag, Ctrl+D quit
-- [ ] Configurable keybindings (`DEFAULT_APP_KEYBINDINGS`,
+- [x] Configurable keybindings (`DEFAULT_APP_KEYBINDINGS`,
       `DEFAULT_EDITOR_KEYBINDINGS`) — no hardcoded key checks
 - [ ] Scrollback / message history buffer
 - [ ] Resizable panes (input vs. transcript)
