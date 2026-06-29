@@ -119,4 +119,4 @@ nixy/
 
 ## License
 
-TBD
+Released into the public domain via [The Unlicense](./LICENSE).
