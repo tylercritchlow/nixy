@@ -21,6 +21,14 @@ pub struct Keybindings {
 pub struct AppKeybindings {
     pub quit: String,
     pub quit_force: String,
+    pub scroll_up: String,
+    pub scroll_down: String,
+    pub scroll_page_up: String,
+    pub scroll_page_down: String,
+    pub scroll_top: String,
+    pub scroll_bottom: String,
+    pub pane_grow: String,
+    pub pane_shrink: String,
 }
 
 impl Default for AppKeybindings {
@@ -28,6 +36,14 @@ impl Default for AppKeybindings {
         Self {
             quit: "ctrl+d".to_string(),
             quit_force: "ctrl+c".to_string(),
+            scroll_up: "alt+up".to_string(),
+            scroll_down: "alt+down".to_string(),
+            scroll_page_up: "alt+pageup".to_string(),
+            scroll_page_down: "alt+pagedown".to_string(),
+            scroll_top: "alt+home".to_string(),
+            scroll_bottom: "alt+end".to_string(),
+            pane_grow: "ctrl+down".to_string(),
+            pane_shrink: "ctrl+up".to_string(),
         }
     }
 }
@@ -125,6 +141,14 @@ pub struct ParsedKeybindings {
 pub struct ParsedAppKeybindings {
     pub quit: KeyBinding,
     pub quit_force: KeyBinding,
+    pub scroll_up: KeyBinding,
+    pub scroll_down: KeyBinding,
+    pub scroll_page_up: KeyBinding,
+    pub scroll_page_down: KeyBinding,
+    pub scroll_top: KeyBinding,
+    pub scroll_bottom: KeyBinding,
+    pub pane_grow: KeyBinding,
+    pub pane_shrink: KeyBinding,
 }
 
 #[derive(Debug, Clone)]
@@ -139,6 +163,14 @@ impl AppKeybindings {
         Ok(ParsedAppKeybindings {
             quit: parse_key(&self.quit)?,
             quit_force: parse_key(&self.quit_force)?,
+            scroll_up: parse_key(&self.scroll_up)?,
+            scroll_down: parse_key(&self.scroll_down)?,
+            scroll_page_up: parse_key(&self.scroll_page_up)?,
+            scroll_page_down: parse_key(&self.scroll_page_down)?,
+            scroll_top: parse_key(&self.scroll_top)?,
+            scroll_bottom: parse_key(&self.scroll_bottom)?,
+            pane_grow: parse_key(&self.pane_grow)?,
+            pane_shrink: parse_key(&self.pane_shrink)?,
         })
     }
 }
@@ -208,6 +240,8 @@ fn parse_code(raw: &str) -> Option<KeyCode> {
         "down" => Some(KeyCode::Down),
         "home" => Some(KeyCode::Home),
         "end" => Some(KeyCode::End),
+        "pageup" | "pgup" => Some(KeyCode::PageUp),
+        "pagedown" | "pgdn" => Some(KeyCode::PageDown),
         "tab" => Some(KeyCode::Tab),
         "space" => Some(KeyCode::Char(' ')),
         _ => {
@@ -271,6 +305,27 @@ mod tests {
     fn parse_function_key() {
         let b = parse_key("f5").unwrap();
         assert_eq!(b.code, KeyCode::F(5));
+    }
+
+    #[test]
+    fn parse_page_keys() {
+        assert_eq!(parse_key("alt+pageup").unwrap().code, KeyCode::PageUp);
+        assert_eq!(parse_key("alt+pgdn").unwrap().code, KeyCode::PageDown);
+    }
+
+    #[test]
+    fn app_keybindings_default_parse_succeeds() {
+        let parsed = AppKeybindings::default().parse().unwrap();
+        assert!(
+            parsed
+                .pane_grow
+                .matches(&KeyEvent::new(KeyCode::Down, KeyModifiers::CONTROL))
+        );
+        assert!(
+            parsed
+                .scroll_up
+                .matches(&KeyEvent::new(KeyCode::Up, KeyModifiers::ALT))
+        );
     }
 
     #[test]

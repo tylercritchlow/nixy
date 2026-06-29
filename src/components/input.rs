@@ -13,6 +13,7 @@ pub struct Input {
     scroll: usize,
     wrap_width: usize,
     preferred_col: Option<usize>,
+    pending_submit: Option<String>,
     keys: ParsedEditorKeybindings,
 }
 
@@ -24,8 +25,13 @@ impl Input {
             scroll: 0,
             wrap_width: 80,
             preferred_col: None,
+            pending_submit: None,
             keys,
         }
+    }
+
+    pub fn take_submit(&mut self) -> Option<String> {
+        self.pending_submit.take()
     }
 
     pub fn handle_key(&mut self, key: &KeyEvent) -> bool {
@@ -76,8 +82,11 @@ impl Input {
                 true
             }
             KeyCode::Enter => {
-                self.value.clear();
-                self.cursor = 0;
+                if !self.value.is_empty() {
+                    self.pending_submit = Some(std::mem::take(&mut self.value));
+                    self.cursor = 0;
+                    self.scroll = 0;
+                }
                 true
             }
             KeyCode::Backspace => {

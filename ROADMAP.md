@@ -17,8 +17,9 @@ The current terminal shell.
 - [x] Ctrl+C quit-nag, Ctrl+D quit
 - [x] Configurable keybindings (`DEFAULT_APP_KEYBINDINGS`,
       `DEFAULT_EDITOR_KEYBINDINGS`) — no hardcoded key checks
-- [ ] Scrollback / message history buffer
-- [ ] Resizable panes (input vs. transcript)
+- [x] Scrollback / message history buffer
+- [x] Resizable panes (input vs. transcript)
+- [x] Mouse wheel scrolling over transcript
 
 ## Phase 1 — Nix Introspection
 
