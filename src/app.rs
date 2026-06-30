@@ -262,18 +262,24 @@ fn render_manifest_overlay(
         },
     };
 
-    let width = area.width.saturating_sub(4).clamp(40, 72);
+    let max_width = area.width.saturating_sub(2);
+    let width = area.width.saturating_sub(4).clamp(40, 72).min(max_width);
     let inner_width = (width.saturating_sub(2)).max(1) as usize;
     let rows: Vec<String> = content
         .lines()
         .flat_map(|line| wrap_words(line, inner_width))
         .collect();
-    let height = rows.len() as u16 + 2;
+    let max_rows = area.height.saturating_sub(4) as usize;
+    let visible_rows = rows.len().min(max_rows);
+    let height = visible_rows as u16 + 2;
     let overlay = centered_rect(area, width, height);
 
     frame.render_widget(Clear, overlay);
     let block = Block::bordered().title("manifest");
-    let lines: Vec<Line> = rows.iter().map(|row| Line::from(row.as_str())).collect();
+    let lines: Vec<Line> = rows[..visible_rows]
+        .iter()
+        .map(|row| Line::from(row.as_str()))
+        .collect();
     frame.render_widget(Paragraph::new(lines).block(block), overlay);
 }
 
@@ -291,11 +297,14 @@ fn wrap_words(line: &str, width: usize) -> Vec<String> {
                 cur_len = 0;
             }
             let mut buf = String::new();
+            let mut buf_len = 0usize;
             for ch in word.chars() {
-                if buf.chars().count() == width {
+                if buf_len == width {
                     rows.push(std::mem::take(&mut buf));
+                    buf_len = 0;
                 }
                 buf.push(ch);
+                buf_len += 1;
             }
             if !buf.is_empty() {
                 rows.push(buf);

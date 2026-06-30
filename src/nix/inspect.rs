@@ -27,7 +27,7 @@ pub enum NixError {
 const EXPERIMENTAL: [&str; 2] = ["--extra-experimental-features", "nix-command flakes"];
 
 fn run_nix_json(dir: &Path, args: &[&str]) -> Result<Value, NixError> {
-    let cmd_string = format!("nix {}", args.join(" "));
+    let cmd_string = args.join(" ");
     let output = Command::new("nix")
         .args(EXPERIMENTAL.iter().copied())
         .args(args.iter().copied())
