@@ -1,7 +1,11 @@
+use std::sync::mpsc;
+use std::thread;
 use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyEventKind, MouseEventKind};
-use ratatui::layout::Rect;
+use ratatui::layout::{Constraint, Flex, Layout, Rect};
+use ratatui::text::Line;
+use ratatui::widgets::{Block, Clear, Paragraph};
 
 use crate::components::{
     input::Input,
@@ -10,6 +14,7 @@ use crate::components::{
     transcript::{Message, Transcript},
 };
 use crate::config::Config;
+use crate::nix::{self, Manifest};
 
 const CTRL_C_WINDOW: Duration = Duration::from_millis(1_000);
 const POLL_TIMEOUT: Duration = Duration::from_millis(100);
@@ -42,9 +47,25 @@ pub fn run() -> std::io::Result<()> {
         let mut status = Status::new();
         let mut transcript = Transcript::new();
         let mut input_pane_height: u16 = DEFAULT_INPUT_PANE;
+        let mut manifest: Option<Manifest> = None;
+        let mut manifest_error: Option<String> = None;
+        let mut show_manifest = false;
+
+        let cwd = std::env::current_dir()?;
+        let (introspect_tx, introspect_rx) = mpsc::channel::<Result<Manifest, _>>();
+        thread::spawn(move || {
+            let _ = introspect_tx.send(nix::manifest_for(&cwd));
+        });
 
         loop {
             status.tick();
+
+            if let Ok(result) = introspect_rx.try_recv() {
+                match result {
+                    Ok(m) => manifest = Some(m),
+                    Err(e) => manifest_error = Some(format!("{e}")),
+                }
+            }
 
             terminal.draw(|frame| {
                 let area = frame.area();
@@ -76,6 +97,15 @@ pub fn run() -> std::io::Result<()> {
 
                 let status_area = Rect::new(input_x, status_y, input_width, 1);
                 status.render(frame, status_area);
+
+                if show_manifest {
+                    render_manifest_overlay(
+                        frame,
+                        area,
+                        manifest.as_ref(),
+                        manifest_error.as_deref(),
+                    );
+                }
             })?;
 
             if !event::poll(POLL_TIMEOUT)? {
@@ -90,6 +120,7 @@ pub fn run() -> std::io::Result<()> {
                         &mut status,
                         &mut transcript,
                         &mut input_pane_height,
+                        &mut show_manifest,
                     ) {
                         break;
                     }
@@ -98,6 +129,9 @@ pub fn run() -> std::io::Result<()> {
                     }
                 }
                 Event::Mouse(mouse) => {
+                    if show_manifest {
+                        continue;
+                    }
                     if let Ok(size) = terminal.size() {
                         let area = Rect::new(0, 0, size.width, size.height);
                         handle_mouse(&mouse, area, &input, input_pane_height, &mut transcript);
@@ -119,6 +153,7 @@ fn handle_key(
     status: &mut Status,
     transcript: &mut Transcript,
     input_pane_height: &mut u16,
+    show_manifest: &mut bool,
 ) -> bool {
     if app.quit.matches(key) {
         return true;
@@ -132,6 +167,14 @@ fn handle_key(
             "Press Ctrl+C again to close".to_string(),
             Some(CTRL_C_WINDOW),
         );
+        return false;
+    }
+
+    if app.show_manifest.matches(key) {
+        *show_manifest = !*show_manifest;
+        return false;
+    }
+    if *show_manifest {
         return false;
     }
 
@@ -205,6 +248,90 @@ fn handle_mouse(
     }
 }
 
+fn render_manifest_overlay(
+    frame: &mut ratatui::Frame,
+    area: Rect,
+    manifest: Option<&Manifest>,
+    error: Option<&str>,
+) {
+    let content = match manifest {
+        Some(m) => m.summarize(),
+        None => match error {
+            Some(e) => format!("nix introspection failed:\n{e}"),
+            None => "introspecting…".to_string(),
+        },
+    };
+
+    let width = area.width.saturating_sub(4).clamp(40, 72);
+    let inner_width = (width.saturating_sub(2)).max(1) as usize;
+    let rows: Vec<String> = content
+        .lines()
+        .flat_map(|line| wrap_words(line, inner_width))
+        .collect();
+    let height = rows.len() as u16 + 2;
+    let overlay = centered_rect(area, width, height);
+
+    frame.render_widget(Clear, overlay);
+    let block = Block::bordered().title("manifest");
+    let lines: Vec<Line> = rows.iter().map(|row| Line::from(row.as_str())).collect();
+    frame.render_widget(Paragraph::new(lines).block(block), overlay);
+}
+
+fn wrap_words(line: &str, width: usize) -> Vec<String> {
+    let width = width.max(1);
+    let mut rows: Vec<String> = Vec::new();
+    let mut cur = String::new();
+    let mut cur_len = 0usize;
+
+    for word in line.split_whitespace() {
+        let wlen = word.chars().count();
+        if wlen > width {
+            if !cur.is_empty() {
+                rows.push(std::mem::take(&mut cur));
+                cur_len = 0;
+            }
+            let mut buf = String::new();
+            for ch in word.chars() {
+                if buf.chars().count() == width {
+                    rows.push(std::mem::take(&mut buf));
+                }
+                buf.push(ch);
+            }
+            if !buf.is_empty() {
+                rows.push(buf);
+            }
+            continue;
+        }
+        if cur.is_empty() {
+            cur.push_str(word);
+            cur_len = wlen;
+        } else if cur_len + 1 + wlen <= width {
+            cur.push(' ');
+            cur.push_str(word);
+            cur_len += 1 + wlen;
+        } else {
+            rows.push(std::mem::take(&mut cur));
+            cur.push_str(word);
+            cur_len = wlen;
+        }
+    }
+
+    if !cur.is_empty() || rows.is_empty() {
+        rows.push(cur);
+    }
+    rows
+}
+
+fn centered_rect(area: Rect, width: u16, height: u16) -> Rect {
+    let [row] = Layout::vertical([Constraint::Length(height)])
+        .flex(Flex::Center)
+        .areas(area);
+    let [col] = Layout::horizontal([Constraint::Length(width)])
+        .flex(Flex::Center)
+        .areas(row);
+    col
+}
+
 struct MouseGuard;
 
 impl Drop for MouseGuard {
@@ -216,4 +343,27 @@ impl Drop for MouseGuard {
 fn enable_mouse() -> std::io::Result<MouseGuard> {
     crossterm::execute!(std::io::stdout(), crossterm::event::EnableMouseCapture)?;
     Ok(MouseGuard)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wrap_words_breaks_on_spaces() {
+        let rows = wrap_words("DevShell: rust-default-1.96.0, openssl-3.6.2", 20);
+        assert!(rows.iter().all(|r| r.chars().count() <= 20));
+        assert!(rows.contains(&"rust-default-1.96.0,".to_string()));
+    }
+
+    #[test]
+    fn wrap_words_splits_long_token() {
+        let rows = wrap_words("abcdefabcdefabcdef", 5);
+        assert_eq!(rows, vec!["abcde", "fabcd", "efabc", "def"]);
+    }
+
+    #[test]
+    fn wrap_words_empty_yields_one_row() {
+        assert_eq!(wrap_words("", 10), vec![String::new()]);
+    }
 }

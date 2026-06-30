@@ -29,6 +29,7 @@ pub struct AppKeybindings {
     pub scroll_bottom: String,
     pub pane_grow: String,
     pub pane_shrink: String,
+    pub show_manifest: String,
 }
 
 impl Default for AppKeybindings {
@@ -44,6 +45,7 @@ impl Default for AppKeybindings {
             scroll_bottom: "alt+end".to_string(),
             pane_grow: "ctrl+down".to_string(),
             pane_shrink: "ctrl+up".to_string(),
+            show_manifest: "ctrl+o".to_string(),
         }
     }
 }
@@ -149,6 +151,7 @@ pub struct ParsedAppKeybindings {
     pub scroll_bottom: KeyBinding,
     pub pane_grow: KeyBinding,
     pub pane_shrink: KeyBinding,
+    pub show_manifest: KeyBinding,
 }
 
 #[derive(Debug, Clone)]
@@ -171,6 +174,7 @@ impl AppKeybindings {
             scroll_bottom: parse_key(&self.scroll_bottom)?,
             pane_grow: parse_key(&self.pane_grow)?,
             pane_shrink: parse_key(&self.pane_shrink)?,
+            show_manifest: parse_key(&self.show_manifest)?,
         })
     }
 }
