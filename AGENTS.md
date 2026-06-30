@@ -97,8 +97,8 @@ Committing:
   `git add .`.
 - Before committing, run `git status` and verify you are only staging your
   files.
-- Message format: `{feat,fix,docs}[(tui,agent,flake,core)]: <message>`,
-  informative and concise, optionally multiple lines.
+- Message format: a single descriptive line, no conventional-commit prefix
+  (`feat:`, `fix(scope):`, …) and no body.
 
 Never run (destroys other agents' work or bypasses checks):
 
