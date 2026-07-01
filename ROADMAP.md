@@ -25,9 +25,9 @@ The current terminal shell.
 
 Make the environment *the* context.
 
-- [ ] Parse `flake.nix` / `flake.lock` into a structured manifest
+- [x] Parse `flake.nix` / `flake.lock` into a structured manifest
       (packages, devShell inputs, tool versions)
-- [ ] Detect project type (Cargo, npm, Poetry, Go modules, …) and surface
+- [x] Detect project type (Cargo, npm, Poetry, Go modules, …) and surface
       the relevant toolchain from the flake
 - [ ] Expose manifest to the agent as context (system prompt section)
 - [ ] Bootstrap mode: for non-Nix projects, scan `package.json` /
